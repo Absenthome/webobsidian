@@ -1,7 +1,18 @@
 # PRD — WebObsidian
 
 > Product Requirements Document
-> Phiên bản: 1.5 · Cập nhật: 2026-06-22 · Trạng thái: Draft
+> Phiên bản: 1.6 · Cập nhật: 2026-09-12 · Trạng thái: Draft
+> Changelog 1.6 (FR-14 — MCP Server cho Agent API, theo yêu cầu người dùng): thêm **FR-14** —
+> workspace mới `mcp-server/` là một **MCP (Model Context Protocol) server** chạy qua **stdio**,
+> bọc quanh Agent API `/api/v1` (FR-6) hiện có thành các MCP tool để add trực tiếp vào Claude
+> Desktop/Claude Code/mọi MCP host khác (`claude mcp add` hoặc config `mcpServers`), thay vì phải
+> tự gọi REST hay cài "agent skill" dạng text. Cấu hình 2 biến môi trường: `WEBOBSIDIAN_BASE_URL`
+> (mặc định `http://localhost:8787`) và `WEBOBSIDIAN_API_KEY` (bắt buộc, tạo ở Settings → API
+> Keys). 8 tool map 1-1 vào endpoint sẵn có: `list_notes`, `read_note`, `write_note`,
+> `append_note`, `delete_note`, `search_notes`, `get_backlinks`, `list_tags` — **không thêm
+> endpoint server mới**, không đổi kiến trúc `/api/v1`. Đây là process client-side độc lập (do MCP
+> host spawn), không chạy trong container chính, không ảnh hưởng NFR/security model hiện có
+> (vẫn xác thực bằng API key có scope read/write/search như FR-6).
 > Changelog 1.5 (FR-13 — Desktop app Electron đa nền tảng, theo yêu cầu người dùng): bổ sung **FR-13** —
 > đóng gói WebObsidian thành **app cài đặt** macOS/Windows/Linux (arm64/x64/ia32). Workspace mới `desktop/`
 > là **Electron shell** spawn đúng server Express hiện có như tiến trình con (qua `ELECTRON_RUN_AS_NODE`,
@@ -157,6 +168,8 @@ webobsidian/
 │       ├── components/   # FileTree, Editor, Preview, SearchPanel, Settings…
 │       ├── lib/          # api client, store, markdown
 │       └── styles/
+├── mcp-server/       # MCP server (stdio) — bọc Agent API /api/v1 (FR-14)
+│   └── src/
 ├── data/             # runtime: settings.json, apikeys, sessions (gitignored)
 ├── docs/
 ├── docker-compose.yml
@@ -380,6 +393,39 @@ chúng bằng đường có mũi tên, dùng cho brainstorm, moodboard, sơ đ�
   trùng, nội dung khởi tạo `{"nodes":[],"edges":[]}`.
 - **Phạm vi v1 (non-goals)**: không có realtime collaborative cursor; không group auto-resize theo thành viên;
   không portal/embed canvas-trong-canvas; không liên kết backlink graph từ node file (giữ đơn giản).
+
+### FR-14 · MCP Server (Model Context Protocol) cho Agent API
+Mục tiêu: cho phép Claude Desktop, Claude Code và mọi MCP host khác gắn thẳng vào một vault
+WebObsidian đang chạy như một **MCP server** chuẩn, thay vì phải tự viết code gọi REST `/api/v1`
+(FR-6) hoặc cài "agent skill" dạng hướng dẫn text (`docs/agent-skill/`).
+
+- **Workspace riêng `mcp-server/`**: package TypeScript độc lập, build ra 1 script Node chạy qua
+  **stdio transport** (`@modelcontextprotocol/sdk`) — đúng mô hình MCP host tự spawn process con.
+- **Không phải service chạy nền trong Docker stack**: đây là process client-side, MCP host (Claude
+  Desktop/Code…) spawn khi cần, trỏ vào **một** WebObsidian instance đã chạy sẵn (local hoặc remote)
+  qua URL.
+- **Cấu hình qua biến môi trường** (không thêm vào `data/settings.json` — config này thuộc về máy
+  chạy MCP host, không thuộc server):
+  - `WEBOBSIDIAN_BASE_URL` — URL gốc instance WebObsidian, mặc định `http://localhost:8787`.
+  - `WEBOBSIDIAN_API_KEY` — API key tạo ở Settings → API Keys (FR-6), **bắt buộc**.
+- **8 tool**, map 1-1 vào endpoint Agent API sẵn có, không thêm route server mới:
+  | Tool | Endpoint | Scope cần |
+  |------|----------|-----------|
+  | `list_notes` | `GET /api/v1/notes` | read |
+  | `read_note` | `GET /api/v1/notes/{path}` | read |
+  | `write_note` | `PUT /api/v1/notes/{path}` | write |
+  | `append_note` | `PATCH /api/v1/notes/{path}` | write |
+  | `delete_note` | `DELETE /api/v1/notes/{path}` | write |
+  | `search_notes` | `GET /api/v1/search` | search |
+  | `get_backlinks` | `GET /api/v1/backlinks` | read |
+  | `list_tags` | `GET /api/v1/tags` | read |
+- **Lỗi & xác thực**: mọi lỗi HTTP từ Agent API (401 key sai/thiếu scope, 404 note không tồn tại,
+  429 rate limit) được map thành MCP tool error kèm message gốc — không nuốt lỗi, không retry ngầm.
+- **Bảo mật**: không log giá trị `WEBOBSIDIAN_API_KEY`; không cache nội dung note giữa các lần gọi
+  tool; kế thừa toàn bộ rate limit/scope/audit log đã có ở FR-6 vì chỉ là client REST.
+- **Phạm vi (non-goals)**: không expose thao tác git/plugins/settings qua MCP (chỉ notes/search/
+  backlinks/tags như Agent API hiện có); không có MCP resources/prompts, chỉ tools; không HTTP/SSE
+  transport (chỉ stdio, theo cách Claude Desktop/Code spawn local server).
 
 ### FR-13 · Desktop app (Electron, multi-platform)
 Mục tiêu: đóng gói WebObsidian thành **app cài đặt trên máy** (macOS/Windows/Linux) để người dùng tải về dùng

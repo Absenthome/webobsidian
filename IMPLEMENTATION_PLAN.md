@@ -4,7 +4,7 @@
 > Quy ước: `[ ]` chưa làm · `[~]` đang làm · `[x]` xong.
 > Cập nhật file này **mỗi khi** một mục thay đổi trạng thái.
 
-Cập nhật lần cuối: 2026-09-11 (CI: publish Docker image lên GHCR khi push `main`)
+Cập nhật lần cuối: 2026-09-12 (M28 — MCP Server cho Agent API)
 
 ---
 
@@ -433,7 +433,35 @@ Cập nhật lần cuối: 2026-09-11 (CI: publish Docker image lên GHCR khi pu
       bundle desktop. Root scripts `desktop`/`desktop:dist`/`desktop:publish`; `.gitignore` thêm `desktop/.gen`,
       `desktop/release`.
 
+## Phase 28 — MCP Server cho Agent API — FR-14, PRD 1.6 (theo yêu cầu người dùng)
+- [x] M28.1 Workspace `mcp-server/`: package TS riêng (`@webobsidian/mcp-server`), dùng
+      `@modelcontextprotocol/sdk` (`McpServer` + `StdioServerTransport`), zod cho tool input schema
+      (đồng bộ version zod với `server/`). `tsconfig.json` bám cấu hình `server/tsconfig.json`
+      (ES2022, Bundler, strict).
+- [x] M28.2 Client REST nội bộ (`src/client.ts`) gọi `/api/v1/*` bằng `fetch` (Node 20+ built-in):
+      đọc `WEBOBSIDIAN_BASE_URL` (mặc định `http://localhost:8787`) + `WEBOBSIDIAN_API_KEY` (bắt
+      buộc — thiếu thì in lỗi ra stderr + exit 1, không throw ra stdout vì stdout dành riêng cho
+      JSON-RPC framing) từ env; gắn header `X-API-Key`; encode từng segment path (giữ `/`).
+- [x] M28.3 8 tool 1-1 với Agent API: `list_notes`, `read_note`, `write_note`, `append_note`,
+      `delete_note`, `search_notes`, `get_backlinks`, `list_tags`. Lỗi HTTP (401/404/429) map thành
+      MCP tool error (`isError:true` + message gốc từ Agent API), không nuốt lỗi.
+- [x] M28.4 Root `package.json`: thêm `mcp-server` vào `workspaces`, script `build`/`typecheck` gồm
+      cả workspace mới, script `mcp` (build + start). `mcp-server/README.md` hướng dẫn add vào
+      Claude Desktop/Code (`claude mcp add` / config `mcpServers`).
+- [x] M28.5 Verify: `npm --workspace mcp-server run typecheck`/`build` sạch. Smoke test thật qua
+      stdio JSON-RPC (spawn process, `initialize` → `tools/list` → gọi lần lượt cả 8 tool) nhắm vào
+      1 instance WebObsidian build từ `server/dist` chạy trên `sample-vault` (port test riêng, API
+      key tạo qua `/api/keys`): list/write/append/read/search/tags/backlinks/delete đều trả đúng
+      dữ liệu; case lỗi (`read_note` note không tồn tại) trả `isError:true` kèm message 404 gốc.
+      Dọn sạch `.trash/` phát sinh trong `sample-vault` sau test (không commit).
+
 ### Nhật ký tiến độ
+- 2026-09-12 (FR-14 — MCP Server cho Agent API, theo yêu cầu người dùng): workspace mới
+  `mcp-server/` bọc `/api/v1` (FR-6) thành MCP server chạy qua stdio (`@modelcontextprotocol/sdk`),
+  8 tool map 1-1 endpoint sẵn có, cấu hình qua `WEBOBSIDIAN_BASE_URL`/`WEBOBSIDIAN_API_KEY`. Không
+  thêm route server mới, không đổi `data/settings.json`. Verify bằng smoke test JSON-RPC thật (spawn
+  process, gọi đủ 8 tool + 1 case lỗi 404) lên server build từ `server/dist` chạy trên `sample-vault`.
+  Xem PRD 1.6 §FR-14.
 - 2026-09-11 (CI: publish Docker image lên GHCR): `.github/workflows/ci.yml` job `docker` nay dùng
   `docker/setup-buildx-action` + `docker/metadata-action` + `docker/build-push-action` thay cho
   `docker build` trần. Khi event là `push` (nhánh `main`) → login GHCR bằng `GITHUB_TOKEN` mặc định

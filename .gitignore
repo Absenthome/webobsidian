@@ -17,3 +17,10 @@ desktop/release/
 # Local agent runbooks/skills — may contain server creds; never commit.
 .claude/skills/
 report.md
+# Terraform (mcp-server/terraform examples & local testing)
+**/.terraform/
+**/.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfvars
+.terraform-webobsidian-vm-docs/

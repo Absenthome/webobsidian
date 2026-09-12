@@ -1,0 +1,23 @@
+---
+tags: ${jsonencode(try(vm.tags, []))}
+generated_by: terraform
+---
+
+# ${name}
+%{ if try(vm.notes, "") != "" }
+
+${vm.notes}
+%{ endif }
+
+## Attributes
+
+| Field | Value |
+|---|---|
+%{ for k, v in vm ~}
+%{ if k != "notes" && k != "tags" ~}
+| ${k} | ${try(tostring(v), jsonencode(v))} |
+%{ endif ~}
+%{ endfor ~}
+
+---
+_Managed by Terraform (`webobsidian-vm-docs` module) — edits here may be overwritten on the next `terraform apply`._

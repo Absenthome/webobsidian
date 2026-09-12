@@ -240,6 +240,20 @@ STEP 3 — Verify (do NOT print the key) and confirm ready:
 Details & alternatives: [docs/agent-skill/INSTALL.md](docs/agent-skill/INSTALL.md) ·
 canonical skill: [docs/agent-skill/webobsidian/SKILL.md](docs/agent-skill/webobsidian/SKILL.md).
 
+### 🔌 MCP server
+
+Prefer a proper [MCP](https://modelcontextprotocol.io) integration over a text skill? The
+`mcp-server/` workspace wraps the same Agent API as 8 MCP tools (`list_notes`, `read_note`,
+`write_note`, `append_note`, `delete_note`, `search_notes`, `get_backlinks`, `list_tags`) you can
+add straight to Claude Desktop, Claude Code, or any other MCP host. See
+[mcp-server/README.md](mcp-server/README.md).
+
+### 🏗️ Terraform: auto-document VMs
+
+`terraform/webobsidian-vm-docs` is a provider-agnostic Terraform module that writes one note per
+VM into your vault (via the Agent API) whenever it's created or updated, and trashes the note when
+the VM is destroyed. See [terraform/webobsidian-vm-docs/README.md](terraform/webobsidian-vm-docs/README.md).
+
 ```bash
 KEY=wok_your_key_here
 BASE=http://localhost:8787/api/v1
@@ -275,10 +289,11 @@ Monorepo with two npm workspaces:
 
 ```
 webobsidian/
-├── server/   # Express + TypeScript API
+├── server/       # Express + TypeScript API
 │   └── src/{routes,services,middleware,plugins}
-├── web/      # React + Vite SPA (built into server/public)
+├── web/          # React + Vite SPA (built into server/public)
 │   └── src/{components,lib,styles}
+├── mcp-server/   # MCP server (stdio) wrapping the Agent API for MCP hosts
 ├── data/     # runtime: settings.json + search index (git-ignored)
 ├── docs/     # AGENT_API.md, Obsidian internals notes
 ├── Dockerfile · docker-compose.yml · .env.example

@@ -6,15 +6,17 @@
   "workspaces": [
     "server",
     "web",
-    "desktop"
+    "desktop",
+    "mcp-server"
   ],
   "scripts": {
     "dev": "concurrently -n server,web -c blue,magenta \"npm:dev:server\" \"npm:dev:web\"",
     "dev:server": "npm --workspace server run dev",
     "dev:web": "npm --workspace web run dev",
-    "build": "npm --workspace web run build && npm --workspace server run build",
+    "build": "npm --workspace web run build && npm --workspace server run build && npm --workspace mcp-server run build",
     "start": "npm --workspace server run start",
-    "typecheck": "npm --workspace server run typecheck && npm --workspace web run typecheck",
+    "typecheck": "npm --workspace server run typecheck && npm --workspace web run typecheck && npm --workspace mcp-server run typecheck",
+    "mcp": "npm --workspace mcp-server run build && npm --workspace mcp-server run start",
     "desktop": "npm run build && npm --workspace desktop run dev",
     "desktop:dist": "npm run build && npm --workspace desktop run dist",
     "desktop:publish": "npm run build && npm --workspace desktop run dist:publish"
