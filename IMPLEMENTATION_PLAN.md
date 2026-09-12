@@ -4,7 +4,7 @@
 > Quy ước: `[ ]` chưa làm · `[~]` đang làm · `[x]` xong.
 > Cập nhật file này **mỗi khi** một mục thay đổi trạng thái.
 
-Cập nhật lần cuối: 2026-06-27 (security fix — chặn leo thang quyền token share; merge fix F-03 rate-limit, giữ `trust proxy` mặc định bật)
+Cập nhật lần cuối: 2026-09-11 (CI: publish Docker image lên GHCR khi push `main`)
 
 ---
 
@@ -90,6 +90,10 @@ Cập nhật lần cuối: 2026-06-27 (security fix — chặn leo thang quyền
 - [x] M10.4 Deploy hardening cho self-host: compose `.env`-driven (`VAULT_HOST_PATH`,
   `HTTP_BIND/HTTP_PORT`, `WEBOBSIDIAN_WATCH`) → không clobber khi redeploy; watcher tự
   fallback polling khi inotify `ENOSPC/EMFILE`; `start_period=90s`; README mục Deploy-to-VPS
+- [x] M10.5 `ci.yml` job `docker`: build qua Buildx, push image lên GHCR
+  (`ghcr.io/<owner>/<repo>`) tag `main` + short-sha + `latest` khi push nhánh `main`;
+  trên PR chỉ build (không push, không cần login). Dùng `GITHUB_TOKEN` mặc định, không
+  cần secret riêng; cache layer qua `type=gha`.
 
 ## Phase 11 — QA & DoD
 - [x] M11.1 Smoke test end-to-end (login → edit → search → backlinks → agent API CRUD)
@@ -430,6 +434,12 @@ Cập nhật lần cuối: 2026-06-27 (security fix — chặn leo thang quyền
       `desktop/release`.
 
 ### Nhật ký tiến độ
+- 2026-09-11 (CI: publish Docker image lên GHCR): `.github/workflows/ci.yml` job `docker` nay dùng
+  `docker/setup-buildx-action` + `docker/metadata-action` + `docker/build-push-action` thay cho
+  `docker build` trần. Khi event là `push` (nhánh `main`) → login GHCR bằng `GITHUB_TOKEN` mặc định
+  (permission `packages: write`), push tag `main`, `<short-sha>`, `latest`. Khi là `pull_request` →
+  chỉ build (không login, không push) để giữ PR từ fork an toàn. Cache layer qua `type=gha`. Chưa
+  chạy thật trên Actions (cần push lên GitHub để verify) — đối chiếu PRD §FR-9, không đổi kiến trúc.
 - 2026-06-27 (security fix — leo thang quyền qua token share): `verifyToken()` (server/src/services/auth.ts)
   chỉ kiểm tra chữ ký nên **mọi** token ký bằng `auth.jwtSecret` đều được chấp nhận như phiên owner. Endpoint
   public `POST /public/shares/:id/unlock` ký unlock-cookie bằng cùng secret → người được chia sẻ (có mật khẩu
